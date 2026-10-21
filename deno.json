@@ -1,0 +1,100 @@
+{
+  "appId": "writy",
+  "aioVersion": "v1.0.21-beta",
+  "title": "Writy",
+  "version": "0.1",
+  "client": "electron",
+  "assets": { "/assets": "./assets" },
+  "build": {
+    "targets": [
+      "electron"
+    ],
+    "platforms": [
+      "host"
+    ],
+    "out": "dist",
+    "strictPin": true,
+    "electronRuntime": "online"
+  },
+  "android": {
+    "colorScheme": "system"
+  },
+  "fmt": {
+    "exclude": [
+      ".katana/",
+      "feedback/",
+      "dist/",
+      "node_modules/",
+      "src/vendor/",
+      "src/core/xcore.js",
+      "src/core/snippets/",
+      "core/target/",
+      "core/tests/fixtures/",
+      "assets/"
+    ],
+    "lineWidth": 160
+  },
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "lib": [
+      "deno.ns",
+      "deno.unstable",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "aio"
+  },
+  "imports": {
+    "aio": "./dep/aio/mod.ts",
+    "aio/air": "./dep/aio/src/air.ts",
+    "aio/air/compat": "./dep/aio/src/air-compat.ts",
+    "aio/ui": "./dep/aio/src/ui/mod.ts",
+    "aio/jsx-runtime": "./dep/aio/src/jsx-runtime.ts",
+    "aio/server": "./dep/aio/src/server-entry.ts",
+    "aio/server-only": "./dep/aio/src/server-only.ts",
+    "aio/client-only": "./dep/aio/src/client-only.ts",
+    "aio/state-core": "./dep/aio/src/state-core.ts",
+    "aio/db": "./dep/aio/src/db/mod.ts",
+    "aio/log": "./dep/aio/src/diagnostics/logger.ts",
+    "aio/extras": "./dep/aio/src/extras/mod.ts",
+    "aio/sync": "./dep/aio/src/sync/mod.ts",
+    "aio/testing": "./dep/aio/src/cell-test.ts",
+    "aio/updates": "./dep/aio/src/updates.ts",
+    "aio/cli": "./dep/aio/src/cli.ts",
+    "aio/feedback": "./dep/aio/src/feedback.ts",
+    "aio/build": "./dep/aio/src/build.ts",
+    "aio/ship": "./dep/aio/src/build/ship.ts",
+    "esbuild": "npm:esbuild@0.25.12",
+    "immer": "npm:immer@10.2.0",
+    "happy-dom": "npm:happy-dom@20.14.5",
+    "@std/path": "jsr:@std/path@1.1.3",
+    "@std/assert": "jsr:@std/assert@1.0.19",
+    "electron": "npm:electron@44.7.0"
+  },
+  "tasks": {
+    "dev": "deno run -A src/app.ts --client=electron",
+    "build": "deno run -A ./dep/aio/src/build-all.ts --build-spec=./dep/aio/src/build.ts",
+    "compile": "deno run -A ./dep/aio/src/build-all.ts --build-spec=./dep/aio/src/build.ts --targets=electron",
+    "publish": "deno run -A ./dep/aio/src/am.ts publish",
+    "ship": "deno run -A ./dep/aio/src/build/ship.ts",
+    "test": "AIO_TEST_WIRE=strict deno test -A",
+    "check": "deno check src/ tests/ && deno run -A ./dep/aio/src/am.ts check",
+    "fmt": "deno fmt",
+    "lint": "deno lint src/ && deno run -A ./dep/aio/aiol/mod.ts",
+    "doctor": "deno run -A ./dep/aio/src/server/doctor.ts",
+    "am": "deno run -A ./dep/aio/src/am.ts",
+    "install:electron": "deno run -A ./dep/aio/src/electron-install.ts",
+    "core": "./core/build.sh",
+    "vendor": "./scripts/vendor.sh"
+  },
+  "lint": {
+    "exclude": [
+      "src/vendor/",
+      "src/core/xcore.js",
+      "src/core/xcore.d.ts",
+      "src/core/xcore_bg.wasm.d.ts",
+      "src/core/snippets/"
+    ]
+  }
+}

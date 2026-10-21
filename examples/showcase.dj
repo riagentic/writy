@@ -1,0 +1,93 @@
+``` =meta
+title: Writy Showcase
+author: Writy
+page: A4
+header: Writy | Showcase | {page} / {pages}
+footer: Made with Writy — one file, plain text, opens anywhere
+theme: report
+```
+
+# Writy Showcase
+
+One *single file*, readable as _plain text_, that opens in any browser. It has
+[colour]{color="#c0392b"}, {=highlights=}, x^2^, H~2~O, `code`, [links](https://djot.net)
+and a footnote.[^1]
+
+::: toc
+:::
+
+## Lists
+
+- Bullets
+- With nesting
+
+  1. Numbered
+  2. Lists
+
+- [x] Checklists
+- [ ] Still to do
+
+## Tables
+
+| Product   | Qty | Price |
+|:----------|----:|------:|
+| Coffee    |   2 |  3.50 |
+| Croissant |   1 |  2.20 |
+
+^ A simple table
+
+{head=1 widths="30%,70%"}
+::: table
+- - Feature
+  - Notes
+- - []{colspan=2 bg="#eef4ff"} A merged cell that spans both columns
+- - Cells
+
+    can hold several paragraphs.
+  - And *formatting*.
+:::
+
+## Spreadsheet
+
+The total below is live: [0]{calc="Sales!D4"} €.
+
+{#Sales fmt="C:0.00;D:0.00"}
+``` =sheet
+| Item      | Qty | Price | Total       |
+|-----------|-----|-------|-------------|
+| Coffee    | 2   | 3.5   | =B2*C2      |
+| Croissant | 3   | 2.2   | =B3*C3      |
+| Sum       |     |       | =SUM(D2:D3) |
+```
+
+{data="Sales!A1:D3" title="Sales" type=bar}
+::: chart
+:::
+
+## Shapes
+
+{fill="#fffbe6" h=18mm kind=roundrect stroke="#d4b02c" w=55mm x=95mm y=-2mm}
+::: shape
+A shape over the text
+:::
+
+Shapes float over the paragraph that follows them, and move with it when you
+edit above. Drag a shape to move it and use its corner to resize it.
+
+> “Simplicity is prerequisite for reliability.” — Edsger W. Dijkstra
+
+```rust
+fn main() { println!("code blocks too"); }
+```
+
+{.page-break}
+* * *
+
+## Review
+
+Track changes: {+inserted text+}{at=2026-10-20 by=Ana} and
+{-removed text-}{at=2026-10-20 by=Ana}. A [commented phrase]{at=2026-10-20 by=Ana comment="Check this number"}.
+
+Equation: $`E = mc^2`.
+
+[^1]: Footnotes are collected at the end of the document.

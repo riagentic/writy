@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pdf2xml SYSTEM "pdf2xml.dtd">
+
+<pdf2xml producer="poppler" version="24.02.0">
+<page number="1" position="absolute" top="0" left="0" height="1262" width="892">
+	<fontspec id="0" size="36" family="BAAAAA+NotoSans" color="#000000"/>
+	<fontspec id="1" size="18" family="CAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="2" size="27" family="DAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="3" size="18" family="DAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="4" size="18" family="EAAAAA+OpenSymbol" color="#000000"/>
+<text top="61" left="85" width="217" height="48" font="0"><b>Annual Plan</b></text>
+<text top="132" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="152" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="173" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="194" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="251" left="85" width="82" height="30" font="2"><b>Budget</b></text>
+<text top="299" left="185" width="45" height="20" font="3"><b>Name</b></text>
+<text top="299" left="400" width="29" height="20" font="3"><b>Qty</b></text>
+<text top="299" left="656" width="40" height="20" font="3"><b>Price</b></text>
+<text top="354" left="92" width="46" height="20" font="1">Item 1</text>
+<text top="354" left="336" width="9" height="20" font="1">7</text>
+<text top="354" left="507" width="72" height="20" font="1">1.50 EUR</text>
+<text top="410" left="92" width="46" height="20" font="1">Item 2</text>
+<text top="410" left="336" width="18" height="20" font="1">14</text>
+<text top="410" left="507" width="72" height="20" font="1">3.00 EUR</text>
+<text top="465" left="92" width="46" height="20" font="1">Item 3</text>
+<text top="465" left="336" width="18" height="20" font="1">21</text>
+<text top="465" left="507" width="72" height="20" font="1">4.50 EUR</text>
+<text top="521" left="92" width="46" height="20" font="1">Item 4</text>
+<text top="521" left="336" width="18" height="20" font="1">28</text>
+<text top="521" left="507" width="72" height="20" font="1">6.00 EUR</text>
+<text top="571" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="592" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="612" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="633" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="690" left="85" width="104" height="30" font="2"><b>Section 0</b></text>
+<text top="730" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="751" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="771" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="792" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="833" left="117" width="6" height="22" font="4">•</text>
+<text top="834" left="138" width="80" height="20" font="1">alpha point</text>
+<text top="854" left="117" width="6" height="22" font="4">•</text>
+<text top="855" left="138" width="71" height="20" font="1">beta point</text>
+<text top="897" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="917" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="938" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="959" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="1016" left="85" width="104" height="30" font="2"><b>Section 1</b></text>
+<text top="1056" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="1076" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="1097" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="1118" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="1159" left="117" width="6" height="22" font="4">•</text>
+<text top="1160" left="138" width="80" height="20" font="1">alpha point</text>
+<text top="1180" left="117" width="6" height="22" font="4">•</text>
+<text top="1180" left="138" width="71" height="20" font="1">beta point</text>
+</page>
+<page number="2" position="absolute" top="0" left="0" height="1262" width="892">
+<text top="43" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="64" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="85" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="105" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="163" left="85" width="104" height="30" font="2"><b>Section 2</b></text>
+<text top="202" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="223" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="244" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="264" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="306" left="117" width="6" height="22" font="4">•</text>
+<text top="306" left="138" width="80" height="20" font="1">alpha point</text>
+<text top="326" left="117" width="6" height="22" font="4">•</text>
+<text top="327" left="138" width="71" height="20" font="1">beta point</text>
+<text top="369" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="390" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="410" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="431" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="488" left="85" width="104" height="30" font="2"><b>Section 3</b></text>
+<text top="528" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="549" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="569" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="590" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="631" left="117" width="6" height="22" font="4">•</text>
+<text top="632" left="138" width="80" height="20" font="1">alpha point</text>
+<text top="652" left="117" width="6" height="22" font="4">•</text>
+<text top="653" left="138" width="71" height="20" font="1">beta point</text>
+<text top="695" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="715" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="736" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="757" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="814" left="85" width="104" height="30" font="2"><b>Section 4</b></text>
+<text top="854" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="875" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="895" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="916" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="957" left="117" width="6" height="22" font="4">•</text>
+<text top="958" left="138" width="80" height="20" font="1">alpha point</text>
+<text top="978" left="117" width="6" height="22" font="4">•</text>
+<text top="979" left="138" width="71" height="20" font="1">beta point</text>
+<text top="1020" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="1041" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="1062" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="1083" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="1140" left="85" width="104" height="30" font="2"><b>Section 5</b></text>
+<text top="1180" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="1200" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+</page>
+<page number="3" position="absolute" top="0" left="0" height="1262" width="892">
+<text top="43" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="64" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+<text top="105" left="117" width="6" height="22" font="4">•</text>
+<text top="106" left="138" width="80" height="20" font="1">alpha point</text>
+<text top="126" left="117" width="6" height="22" font="4">•</text>
+<text top="127" left="138" width="71" height="20" font="1">beta point</text>
+<text top="169" left="85" width="740" height="20" font="1">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et </text>
+<text top="189" left="85" width="733" height="20" font="1">dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor </text>
+<text top="210" left="85" width="753" height="20" font="1">incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed </text>
+<text top="231" left="85" width="462" height="20" font="1">do eiusmod tempor incididunt ut labore et dolore magna aliqua. </text>
+</page>
+<outline>
+<item page="1">Budget</item>
+<item page="1">Section 0</item>
+<item page="1">Section 1</item>
+<item page="2">Section 2</item>
+<item page="2">Section 3</item>
+<item page="2">Section 4</item>
+<item page="2">Section 5</item>
+</outline>
+</pdf2xml>

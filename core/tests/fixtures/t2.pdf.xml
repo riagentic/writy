@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pdf2xml SYSTEM "pdf2xml.dtd">
+
+<pdf2xml producer="poppler" version="24.02.0">
+<page number="1" position="absolute" top="0" left="0" height="1262" width="892">
+	<fontspec id="0" size="36" family="BAAAAA+NotoSans" color="#000000"/>
+	<fontspec id="1" size="18" family="CAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="2" size="18" family="DAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="3" size="18" family="EAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="4" size="14" family="CAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="5" size="18" family="CAAAAA+LiberationSerif" color="#000080"/>
+	<fontspec id="6" size="27" family="DAAAAA+LiberationSerif" color="#000000"/>
+	<fontspec id="7" size="18" family="FAAAAA+OpenSymbol" color="#000000"/>
+<image top="616" left="140" width="45" height="45" src="d-1_1.png"/>
+<text top="61" left="85" width="307" height="48" font="0"><b>Quarterly Report</b></text>
+<text top="135" left="85" width="76" height="20" font="1">Intro with </text>
+<text top="135" left="161" width="34" height="20" font="2"><b>bold</b></text>
+<text top="135" left="195" width="9" height="20" font="1">, </text>
+<text top="135" left="204" width="37" height="20" font="3"><i>italic</i></text>
+<text top="135" left="241" width="116" height="20" font="1">, under, gone, H</text>
+<text top="140" left="357" width="7" height="16" font="4">2</text>
+<text top="135" left="364" width="31" height="20" font="1">O, x</text>
+<text top="131" left="395" width="7" height="16" font="4">2</text>
+<text top="135" left="402" width="35" height="20" font="1"><a href="https://example.com/"> and </a></text>
+<text top="135" left="437" width="40" height="20" font="5"><a href="https://example.com/">a link</a></text>
+<text top="135" left="478" width="5" height="20" font="1"><a href="https://example.com/">.</a></text>
+<text top="178" left="397" width="141" height="20" font="1">Centered paragraph</text>
+<text top="220" left="85" width="45" height="30" font="6"><b>List</b></text>
+<text top="259" left="117" width="7" height="22" font="7"></text>
+<text top="260" left="138" width="26" height="20" font="1">one</text>
+<text top="280" left="117" width="7" height="22" font="7"></text>
+<text top="281" left="138" width="27" height="20" font="1">two</text>
+<text top="301" left="170" width="7" height="22" font="7"></text>
+<text top="301" left="192" width="46" height="20" font="1">nested</text>
+<text top="343" left="117" width="50" height="20" font="1">1. first</text>
+<text top="364" left="117" width="71" height="20" font="1">2. second</text>
+<text top="409" left="87" width="83" height="20" font="2"><b>Name Qty</b></text>
+<text top="456" left="85" width="60" height="20" font="1">Merged </text>
+<text top="477" left="85" width="45" height="20" font="1">across</text>
+<text top="548" left="85" width="29" height="20" font="1">Tall</text>
+<text top="524" left="138" width="8" height="20" font="1">a</text>
+<text top="571" left="138" width="9" height="20" font="1">b</text>
+<text top="645" left="85" width="54" height="20" font="1">Image: </text>
+<text top="687" left="128" width="97" height="20" font="1">A quote here.</text>
+</page>
+<outline>
+<item page="1">List</item>
+</outline>
+</pdf2xml>

@@ -1,0 +1,20 @@
+.aio/
+.aio-integrity.json
+dist/
+release/
+node_modules/
+dep/
+*.sqlite
+
+# Secrets — "am fix" writes .env; .env.example is the committed template
+.env
+!.env.example
+
+# Release signing keys — NEVER commit these (see `aio ship keygen`)
+release-key.json
+*-release-key.json
+*.release-key.json
+
+# local tooling and build output
+.claude/
+core/target/

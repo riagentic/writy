@@ -1,0 +1,3 @@
+# LF line endings in every checkout, whatever git's core.autocrlf says —
+# so a Windows clone holds the same bytes as a Linux one (deno fmt writes LF).
+* text=auto eol=lf
