@@ -14,10 +14,11 @@ body{margin:0;background:var(--bg)}
 .jw-page p{margin:0 0 .8em}
 .jw-page a{color:var(--accent)}
 .jw-page img,.jw-page video{max-width:100%;height:auto}
-.jw-page table{border-collapse:collapse;margin:0 0 1em}
-.jw-page th,.jw-page td{border:1px solid var(--line);padding:4px 8px;vertical-align:top}
+.jw-page table{border-collapse:collapse;margin:0 0 1em}.jw-page table:not(.jw-sheet){width:100%}
+.jw-page th,.jw-page td{border:1px solid var(--line);padding:4px 8px;vertical-align:top;overflow-wrap:break-word}
+.jw-page :is(th,td)>:first-child{margin-top:0}.jw-page :is(th,td)>:last-child{margin-bottom:0}
 .jw-page th{background:var(--code);text-align:left}
-.jw-page table.banded tr:nth-child(even) td{background:color-mix(in srgb,var(--accent) 7%,var(--bg))}
+.jw-page table.banded tr:nth-child(even of :has(>td):not(.jw-pg)) td{background:color-mix(in srgb,var(--accent) 7%,var(--bg))}
 .jw-page table.minimal th,.jw-page table.minimal td{border-left:0;border-right:0;border-top:0}
 .jw-page table.plain th,.jw-page table.plain td{border:0}
 .jw-page caption{caption-side:bottom;color:var(--muted);font-size:.9em;padding-top:4px}
@@ -46,12 +47,13 @@ body{margin:0;background:var(--bg)}
 .jw-slide h1,.jw-slide h2{margin-top:0}
 .jw-page .notes{display:none}
 .jw-stale{position:fixed;left:0;right:0;top:0;background:#fff3cd;color:#664d03;padding:6px 12px;font:13px system-ui;z-index:9}
-@media print{.jw-page{padding:0;max-width:none}.jw-stale{display:none}.jw-pg-sheets{display:none}}
+@media print{.jw-page{padding:0;max-width:none}.jw-stale{display:none}.jw-pg-sheets,.jw-pg,.jw-pg-head{display:none}}
 @media screen{body.jw-paged{background:var(--jw-desk,#e6e6e6);padding:24px 0 48px;--jw-shadow:var(--jw-desk-shadow,0 1px 3px rgba(0,0,0,.18),0 4px 16px rgba(0,0,0,.08))}
 @media (prefers-color-scheme:dark){body.jw-paged{background:var(--jw-desk,#3a3a3a);--jw-shadow:var(--jw-desk-shadow,0 0 0 1px rgba(0,0,0,.3),0 2px 10px rgba(0,0,0,.45))}}
 .jw-paged .jw-book{position:relative;margin:0 auto}
 .jw-paged .jw-page{position:relative;z-index:1;max-width:none;margin:0;min-height:var(--jw-book-h,auto)}
 .jw-paged [style*="--jw-mt"]{margin-top:var(--jw-mt)!important}
+.jw-page tr.jw-pg>td{padding:0;border:0;background:none}
 .jw-pg-sheet{position:absolute;left:0;right:0;background:var(--bg);box-shadow:var(--jw-shadow)}
 .jw-pg-hf{position:absolute;left:0;right:0;display:flex;font:9pt/1.2 var(--font,system-ui,sans-serif);color:var(--muted);white-space:nowrap}
 .jw-pg-hf.head{transform:translateY(-50%)}.jw-pg-hf.foot{transform:translateY(50%)}
@@ -90,7 +92,7 @@ fn theme_css(name: &str) -> &'static str {
             ".jw-page h1{border-bottom:3px solid var(--accent);padding-bottom:.25em;color:var(--accent)}",
             ".jw-page h2{border-bottom:1px solid var(--line);padding-bottom:.15em}",
             ".jw-page th{background:var(--accent);color:var(--bg);border-color:var(--accent)}",
-            ".jw-page tbody tr:nth-child(even) td{background:var(--code)}"
+            ".jw-page tr:nth-child(even of :has(>td):not(.jw-pg)) td{background:var(--code)}"
         ),
         "slides" => concat!(
             ".jw-page{max-width:none;--font:Inter,system-ui,sans-serif;--hfont:Inter,system-ui,sans-serif}",

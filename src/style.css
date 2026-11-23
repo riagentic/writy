@@ -446,14 +446,26 @@ input {
 .ProseMirror .tableWrapper {
   overflow-x: auto;
 }
+/* columns sized by their content (as in the saved file); a resized column keeps its width */
 .ProseMirror table {
-  table-layout: fixed;
   width: 100%;
 }
 .ProseMirror td,
 .ProseMirror th {
   position: relative;
   min-width: 1em;
+  overflow-wrap: break-word;
+}
+/* a table split across sheets: the gap to the next sheet, then the repeated header rows (view-only, see paginate.ts) */
+.ProseMirror tr.jw-pg > td {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.ProseMirror tr.jw-pg,
+.ProseMirror tr.jw-pg-head {
+  pointer-events: none;
+  user-select: none;
 }
 .ProseMirror .selectedCell:after {
   content: "";
@@ -521,21 +533,41 @@ input {
   flex: 1;
   border-top: 2px dashed var(--line);
 }
+/*
+ * A `::: name` block: its name in the left page margin, and a marker line there on hover / when selected.
+ * Both sit outside the text, so they never cover it and the block lays out exactly as in the saved file.
+ */
 .jw-div {
-  border-left: 3px solid var(--line, #ddd);
-  padding-left: 10px;
-  margin: 0 0 1em;
   position: relative;
 }
 .jw-div[data-label]:not([data-label=""])::before {
   content: attr(data-label);
   position: absolute;
-  top: -9px;
-  left: 8px;
-  font-size: 10px;
+  top: 0;
+  right: calc(100% + 10px);
+  max-width: 16mm;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 10px/1.6 system-ui, sans-serif;
   color: var(--muted);
-  background: var(--bg, #fff);
-  padding: 0 4px;
+  pointer-events: none;
+}
+.jw-div > .jw-div:first-child::before {
+  top: 1.6em; /* a block starting its parent: label below the parent's */
+}
+.jw-div::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -6px;
+  border-left: 2px solid transparent;
+  pointer-events: none;
+}
+.jw-div:hover::after,
+.jw-div:has(.ProseMirror-selectednode)::after {
+  border-left-color: var(--ui-accent, #2b579a);
 }
 /* speaker notes (`::: notes`): only the editor and the presenter view show them */
 .ProseMirror.jw-page .jw-div.notes {
@@ -657,6 +689,20 @@ input {
   border: 1px dashed var(--ui-line);
   border-radius: 4px;
   margin: 0 0 1em;
+}
+/* an SVG raw block: drawn as it prints; the dashed frame only on hover / when selected */
+.jw-raw.jw-raw-pic {
+  border-color: transparent;
+}
+.jw-raw.jw-raw-pic:hover,
+.jw-raw.jw-raw-pic.ProseMirror-selectednode {
+  border-color: var(--ui-line);
+}
+.jw-raw-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
 }
 .jw-raw-label {
   display: inline-block;
@@ -959,6 +1005,18 @@ input {
 }
 .jw-spacer {
   flex: 1;
+}
+.jw-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui-fg);
+  white-space: nowrap;
+}
+.jw-task progress {
+  width: 140px;
+  height: 6px;
+  accent-color: var(--ui-accent);
 }
 .jw-sb-btn {
   border: 0;

@@ -4,7 +4,8 @@ import { useLocal } from "aio/air";
 import { Icon } from "./icons.tsx";
 import { prefs } from "../cell/prefs.ts";
 import * as C from "../editor/commands.ts";
-import { api, doc, fileDisplay, getView, insertMediaFromPath, metaGet, metaSet, setFileDisplay } from "../editor/session.ts";
+import { doc, fileDisplay, getView, insertMediaFromPath, metaGet, metaSet, setFileDisplay } from "../editor/session.ts";
+import { io } from "../editor/io.ts";
 import { ask, form, toast } from "./dialog.ts";
 import { addComment, cutCopy, editLink, paste, showStats, stepNote, toggleTrack } from "./actions.ts";
 import { setFormattingMarks } from "../editor/marks.ts";
@@ -105,7 +106,7 @@ async function attachFile() {
   const path = await prefs.pick("any");
   const view = v();
   if (!path || !view) return;
-  const m = await api.readMedia(path);
+  const m = await io.readMedia(path);
   const src = addAtt(m.name, m.mime, m.b64);
   C.insert(view, C.N.paragraph.create(null, view.state.schema.text(`📎 ${m.name}`, [C.K.link.create({ href: src })])));
 }

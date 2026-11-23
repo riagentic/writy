@@ -346,20 +346,21 @@ impl<'a> Ctx<'a> {
                         o.push_str(&format!("<caption>{}</caption>", self.inlines(c)));
                     }
                 }
+                let mut rows = Vec::new();
                 for k in c {
-                    if let Node::Row { c, .. } = k {
-                        o.push_str("<tr>");
+                    if let Node::Row { head: rh, c } = k {
+                        let mut r = String::from("<tr>");
                         for cell in c {
                             if let Node::Cell { head, align, c } = cell {
                                 let t = if *head { "th" } else { "td" };
                                 let st = if align.is_empty() { String::new() } else { format!(" style=\"text-align:{align}\"") };
-                                o.push_str(&format!("<{t}{st}>{}</{t}>", self.inlines(c)));
+                                r.push_str(&format!("<{t}{st}>{}</{t}>", self.inlines(c)));
                             }
                         }
-                        o.push_str("</tr>");
+                        rows.push((*rh, r + "</tr>"));
                     }
                 }
-                o + "</table>"
+                o + &sections(rows) + "</table>"
             }
             Node::Div { a, class, c } => self.div(a, class, c),
             Node::Code { a, lang, s } => {
@@ -690,18 +691,19 @@ impl<'a> Ctx<'a> {
     fn rich_table(&mut self, a: &Attrs, c: &[Node]) -> String {
         let head: usize = a.get("head").and_then(|h| h.parse().ok()).unwrap_or(0);
         let widths: Vec<String> = a.get("widths").map(|w| w.split(',').map(|x| x.trim().to_string()).collect()).unwrap_or_default();
-        let mut o = format!("<table{}>", html_attrs(&strip(a, &["head", "widths"]), "jw-table", ""));
+        let mut cols = String::new();
         if !widths.is_empty() {
-            o.push_str("<colgroup>");
-            widths.iter().for_each(|w| o.push_str(&format!("<col style=\"width:{}\">", esc(w))));
-            o.push_str("</colgroup>");
+            cols.push_str("<colgroup>");
+            widths.iter().for_each(|w| cols.push_str(&format!("<col style=\"width:{}\">", esc(w))));
+            cols.push_str("</colgroup>");
         }
         let mut caption = None;
+        let mut out = Vec::new();
         for n in c {
             match n {
                 Node::List { c: rows, .. } => {
                     for (ri, row) in rows.iter().enumerate() {
-                        o.push_str("<tr>");
+                        let mut r = String::from("<tr>");
                         let cells = row.kids().iter().find_map(|k| if let Node::List { c, .. } = k { Some(c.clone()) } else { None }).unwrap_or_default();
                         for cell in cells {
                             let mut kids = cell.kids().to_vec();
@@ -716,19 +718,20 @@ impl<'a> Ctx<'a> {
                             } else {
                                 self.blocks(&kids)
                             };
-                            o.push_str(&format!("<{t}{}>{body}</{t}>", html_attrs(&ca, "", "")));
+                            r.push_str(&format!("<{t}{}>{body}</{t}>", html_attrs(&ca, "", "")));
                         }
-                        o.push_str("</tr>");
+                        out.push((ri < head, r + "</tr>"));
                     }
                 }
                 Node::Para { c, .. } => caption = Some(self.inlines(c)),
                 _ => {}
             }
         }
-        if let Some(cap) = caption {
-            o.push_str(&format!("<caption>{cap}</caption>"));
-        }
-        o + "</table>"
+        let cap = caption.map(|c| format!("<caption>{c}</caption>")).unwrap_or_default();
+        // every column resized in the editor (px): the table is exactly that wide there, so here too
+        let px: Option<f64> = widths.iter().map(|w| w.strip_suffix("px").and_then(|n| n.trim().parse::<f64>().ok())).sum();
+        let fixed = px.filter(|_| !widths.is_empty()).map(|w| format!("width:{w}px")).unwrap_or_default();
+        format!("<table{}>{cap}{cols}{}</table>", html_attrs(&strip(a, &["head", "widths"]), "jw-table", &fixed), sections(out))
     }
 
     fn inlines(&mut self, c: &[Node]) -> String {
@@ -929,4 +932,19 @@ fn shape_text_css(a: &Attrs) -> String {
         css.push(format!("text-align:{al};justify-content:{flex}"));
     }
     if css.is_empty() { String::new() } else { format!(" style=\"{}\"", css.join(";")) }
+}
+
+/// Table rows → `<thead>` (the leading header rows, repeated on each printed page) + `<tbody>`.
+fn sections(rows: Vec<(bool, String)>) -> String {
+    let n = rows.iter().take_while(|(h, _)| *h).count();
+    let (head, body): (Vec<_>, Vec<_>) = rows.into_iter().enumerate().partition(|(i, _)| *i < n);
+    let join = |v: Vec<(usize, (bool, String))>| v.into_iter().map(|(_, (_, r))| r).collect::<String>();
+    let mut o = String::new();
+    if n > 0 {
+        o += &format!("<thead>{}</thead>", join(head));
+    }
+    if !body.is_empty() {
+        o += &format!("<tbody>{}</tbody>", join(body));
+    }
+    o
 }

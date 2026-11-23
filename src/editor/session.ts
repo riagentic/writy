@@ -23,9 +23,10 @@ import { fromCalc, sheetIdOf } from "./refs.ts";
 import { textStats } from "./stats.ts";
 import { findPlugin } from "./find.ts";
 import { ask, choose, toast } from "../ui/dialog.ts";
+import { b64Of, busy, io } from "./io.ts";
 import { toCsv, withExt } from "../ui/text.ts";
 
-export const api = serverFn<typeof files>("files");
+const api = serverFn<typeof files>("files");
 
 export type Active = {
   marks: Record<string, boolean>;
@@ -93,20 +94,31 @@ export const getView = (): V.EditorView | null => view;
 
 const draftId = crypto.randomUUID();
 let draftTimer: ReturnType<typeof setTimeout> | undefined;
-let drafted = false;
+/** The document the draft file holds (null = none, or it must be written again). */
+let drafted: M.Node | null = null;
+/** A draft file may exist on disk (set before its upload starts, so a drop never misses one). */
+let hasDraft = false;
+/** Draft uploads, touches and drops run one after another: a slow upload can never land after its drop. */
+let drafts: Promise<unknown> = Promise.resolve();
+const queueDraft = (f: () => Promise<unknown>) => void (drafts = drafts.then(f).catch(() => {}));
+/** Bumped on every edit: a save only marks the document clean when nothing changed while it was writing. */
+let rev = 0;
 /** Drafts untouched this long belong to a closed/crashed window. */
 const ORPHAN_MS = 3 * 60_000;
 
 function saveDraft() {
   if (!view || !doc.dirty.peek()) return;
-  const x = currentX();
-  drafted = true;
-  api.draftSave(draftId, doc.path.peek(), doc.name.peek(), core.fileBuild(x, usedAtts(x))).catch(() => {});
+  const [path, name] = [doc.path.peek(), doc.name.peek()];
+  if (drafted === view.state.doc) return queueDraft(() => api.draftTouch(draftId, path, name));
+  const x = currentX(), html = core.fileBuild(x, usedAtts(x)), at = (drafted = view.state.doc);
+  hasDraft = true;
+  queueDraft(() => io.draftSave(draftId, path, name, html).catch((e) => (drafted === at && (drafted = null), Promise.reject(e))));
 }
 
 function dropDraft() {
   clearTimeout(draftTimer);
-  if (drafted) (drafted = false, api.draftDrop(draftId).catch(() => {}));
+  drafted = null;
+  if (hasDraft) (hasDraft = false, queueDraft(() => api.draftDrop(draftId)));
 }
 
 /** Offer to restore drafts left by windows that closed without saving. */
@@ -122,7 +134,7 @@ async function recover() {
     if (r === "discard") await api.draftDrop(d.id);
     if (r !== "restore") continue;
     if (!(await confirmDiscard())) return;
-    const o = core.fileRead(await api.draftRead(d.id));
+    const o = core.fileRead(await io.draftRead(d.id));
     load(core.djotParse(o.src), o.atts, d.path, d.name);
     doc.dirty.set(true);
     saveDraft();
@@ -184,6 +196,7 @@ export async function mount(el: HTMLElement): Promise<void> {
 
 let statsTimer: ReturnType<typeof setTimeout> | undefined;
 function changed() {
+  rev++;
   doc.dirty.set(true);
   clearTimeout(calcTimer);
   calcTimer = setTimeout(() => view && recompute(view.state.doc), 120);
@@ -309,7 +322,6 @@ export function beforeLeave(e: BeforeUnloadEvent): void {
   });
 }
 
-const u8 = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 const dirOf = (p: string) => p.replace(/[\\/][^\\/]*$/, "");
 
 /** Embed local images referenced by an imported document. */
@@ -320,7 +332,7 @@ async function embedLocal(x: X, dir: string): Promise<void> {
   });
   for (const n of imgs) {
     try {
-      const m = await api.readMedia(decodeURIComponent(n.src!), dir);
+      const m = await io.readMedia(decodeURIComponent(n.src!), dir);
       n.src = addAtt(m.name, m.mime, m.b64);
     } catch {
       /* keep the original link if the file is missing */
@@ -340,118 +352,128 @@ export async function open(path?: string): Promise<void> {
     if (r === "forget") prefs.forget(p);
     return;
   }
+  const keepName = baseName(p);
   try {
-    const f = await api.read(p);
-    let x: X;
-    let atts: Att[] = [];
-    let savePath = p;
-    const keepName = f.name;
-    setAtts([]);
-    switch (f.ext) {
-      case "html":
-      case "htm": {
-        const o = core.fileRead(f.text!);
-        if (o.native) {
-          x = core.djotParse(o.src);
-          atts = o.atts;
-          doc.stale.set(o.stale);
-          if (o.stale) toast("The source was edited outside Writy — showing the source version.");
-        } else {
-          const r = core.htmlImport(f.text!);
-          x = r.doc;
-          atts = r.atts;
+    await busy(`Opening ${keepName}…`, async (step) => {
+      const reading = (done: number) => void step(`Reading ${keepName}…`, done);
+      const text = () => io.readText(p, reading);
+      const bytes = async () => {
+        const b = await io.read(p, reading);
+        await step(`Converting ${keepName}…`);
+        return b;
+      };
+      let x: X;
+      let atts: Att[] = [];
+      let savePath = p;
+      setAtts([]);
+      switch ((p.match(/\.([^./\\]+)$/)?.[1] ?? "").toLowerCase()) {
+        case "html":
+        case "htm": {
+          const s = await text();
+          const o = core.fileRead(s);
+          if (o.native) {
+            x = core.djotParse(o.src);
+            atts = o.atts;
+            doc.stale.set(o.stale);
+            if (o.stale) toast("The source was edited outside Writy — showing the source version.");
+          } else {
+            const r = core.htmlImport(s);
+            x = r.doc;
+            atts = r.atts;
+            await embedLocal(x, dirOf(p));
+            savePath = "";
+          }
+          break;
+        }
+        case "dj":
+        case "djot":
+          x = core.djotParse(await text());
           await embedLocal(x, dirOf(p));
-          savePath = "";
+          savePath = p.replace(/\.(dj|djot)$/, ".html");
+          break;
+        case "md":
+        case "markdown":
+          x = core.mdImport(await text());
+          await embedLocal(x, dirOf(p));
+          savePath = p.replace(/\.(md|markdown)$/, ".html");
+          break;
+        case "csv":
+        case "tsv": {
+          const rows = parseTable((await text()).replace(/\r\n?/g, "\n").replace(/\n+$/, ""));
+          const w = Math.max(1, ...rows.map((r) => r.length));
+          const id = sheetIdOf(baseName(p).replace(/\.[^.]+$/, ""));
+          x = { t: "doc", c: [{ t: "raw", format: "sheet", a: { id }, s: core.gridFormat(rows.map((r) => [...r, ...Array(w - r.length).fill("")]), 1) }] };
+          savePath = p.replace(/\.(csv|tsv)$/i, ".html");
+          break;
         }
-        break;
-      }
-      case "dj":
-      case "djot":
-        x = core.djotParse(f.text!);
-        await embedLocal(x, dirOf(p));
-        savePath = p.replace(/\.(dj|djot)$/, ".html");
-        break;
-      case "md":
-      case "markdown":
-        x = core.mdImport(f.text!);
-        await embedLocal(x, dirOf(p));
-        savePath = p.replace(/\.(md|markdown)$/, ".html");
-        break;
-      case "csv":
-      case "tsv": {
-        const rows = parseTable(f.text!.replace(/\r\n?/g, "\n").replace(/\n+$/, ""));
-        const w = Math.max(1, ...rows.map((r) => r.length));
-        const id = sheetIdOf(baseName(p).replace(/\.[^.]+$/, ""));
-        x = { t: "doc", c: [{ t: "raw", format: "sheet", a: { id }, s: core.gridFormat(rows.map((r) => [...r, ...Array(w - r.length).fill("")]), 1) }] };
-        savePath = p.replace(/\.(csv|tsv)$/i, ".html");
-        break;
-      }
-      case "xlsx":
-      case "xlsm":
-      case "xls":
-      case "ods":
-      case "fods":
-      case "numbers": {
-        toast("Reading the workbook with LibreOffice…");
-        const book = await api.bookSheets(p);
-        const ids = new Map<string, string>();
-        for (const { name } of book) {
-          let id = sheetIdOf(name);
-          while ([...ids.values()].includes(id)) id += "_";
-          ids.set(name, id);
+        case "xlsx":
+        case "xlsm":
+        case "xls":
+        case "ods":
+        case "fods":
+        case "numbers": {
+          await step("Reading the workbook with LibreOffice…");
+          const book = await api.bookSheets(p);
+          const ids = new Map<string, string>();
+          for (const { name } of book) {
+            let id = sheetIdOf(name);
+            while ([...ids.values()].includes(id)) id += "_";
+            ids.set(name, id);
+          }
+          // one heading + sheet per workbook sheet; formulas follow the new sheet names
+          x = {
+            t: "doc",
+            c: book.flatMap(({ name, csv }) => {
+              const rows = parseTable(csv.replace(/\r\n?/g, "\n").replace(/\n+$/, "")).map((r) => r.map((v) => fromCalc(v, ids)));
+              const w = Math.max(1, ...rows.map((r) => r.length));
+              const grid = core.gridFormat(rows.map((r) => [...r, ...Array(w - r.length).fill("")]), 1);
+              const sheet: X = { t: "raw", format: "sheet", a: { id: ids.get(name)! }, s: grid };
+              return book.length > 1 ? [{ t: "heading", level: 2, c: [str(name)] } as X, sheet] : [sheet];
+            }),
+          };
+          savePath = p.replace(/\.[^.]+$/, ".html");
+          break;
         }
-        // one heading + sheet per workbook sheet; formulas follow the new sheet names
-        x = {
-          t: "doc",
-          c: book.flatMap(({ name, csv }) => {
-            const rows = parseTable(csv.replace(/\r\n?/g, "\n").replace(/\n+$/, "")).map((r) => r.map((v) => fromCalc(v, ids)));
-            const w = Math.max(1, ...rows.map((r) => r.length));
-            const grid = core.gridFormat(rows.map((r) => [...r, ...Array(w - r.length).fill("")]), 1);
-            const sheet: X = { t: "raw", format: "sheet", a: { id: ids.get(name)! }, s: grid };
-            return book.length > 1 ? [{ t: "heading", level: 2, c: [str(name)] } as X, sheet] : [sheet];
-          }),
-        };
-        savePath = p.replace(/\.[^.]+$/, ".html");
-        break;
+        case "txt":
+          x = { t: "doc", c: (await text()).split(/\r?\n\s*\r?\n/).map((b) => para([str(b.replace(/\r?\n/g, " "))])) };
+          savePath = p.replace(/\.txt$/, ".html");
+          break;
+        case "docx": {
+          const r = core.docxImport(await bytes());
+          [x, atts] = [r.doc, r.atts];
+          savePath = p.replace(/\.docx$/i, ".html");
+          break;
+        }
+        case "odt": {
+          const r = core.odtImport(await bytes());
+          [x, atts] = [r.doc, r.atts];
+          savePath = p.replace(/\.odt$/i, ".html");
+          break;
+        }
+        case "pdf": {
+          await step(`Reading ${keepName}…`);
+          const { xml, images } = await io.pdfXml(p);
+          const r = core.pdfImport(xml, images);
+          [x, atts] = [r.doc, r.atts];
+          savePath = p.replace(/\.pdf$/i, ".html");
+          break;
+        }
+        default: {
+          await step("Converting with LibreOffice…");
+          const r = core.docxImport(await io.toDocx(p));
+          [x, atts] = [r.doc, r.atts];
+          savePath = p.replace(/\.[^.]+$/, ".html");
+        }
       }
-      case "txt":
-        x = { t: "doc", c: f.text!.split(/\r?\n\s*\r?\n/).map((b) => para([str(b.replace(/\r?\n/g, " "))])) };
-        savePath = p.replace(/\.txt$/, ".html");
-        break;
-      case "docx": {
-        const r = core.docxImport(u8(f.b64!));
-        [x, atts] = [r.doc, r.atts];
-        savePath = p.replace(/\.docx$/i, ".html");
-        break;
+      await step(`Laying out ${keepName}…`);
+      const existing = allAtts();
+      load(x, [...existing, ...atts], savePath === p ? p : "", savePath === p ? keepName : keepName.replace(/\.[^.]+$/, ".html"));
+      if (savePath !== p) {
+        doc.dirty.set(true);
+        toast(`Imported ${keepName} — Save to create a Writy .html file.`);
       }
-      case "odt": {
-        const r = core.odtImport(u8(f.b64!));
-        [x, atts] = [r.doc, r.atts];
-        savePath = p.replace(/\.odt$/i, ".html");
-        break;
-      }
-      case "pdf": {
-        toast("Reading PDF…");
-        const { xml, images } = await api.pdfXml(p);
-        const r = core.pdfImport(xml, images);
-        [x, atts] = [r.doc, r.atts];
-        savePath = p.replace(/\.pdf$/i, ".html");
-        break;
-      }
-      default: {
-        toast("Converting with LibreOffice…");
-        const r = core.docxImport(u8(await api.toDocx(p)));
-        [x, atts] = [r.doc, r.atts];
-        savePath = p.replace(/\.[^.]+$/, ".html");
-      }
-    }
-    const existing = allAtts();
-    load(x, [...existing, ...atts], savePath === p ? p : "", savePath === p ? keepName : keepName.replace(/\.[^.]+$/, ".html"));
-    if (savePath !== p) {
-      doc.dirty.set(true);
-      toast(`Imported ${keepName} — Save to create a Writy .html file.`);
-    }
-    prefs.addRecent(p, keepName, Date.now());
+      prefs.addRecent(p, keepName, Date.now());
+    });
   } catch (e) {
     toast(`Could not open “${baseName(p)}”: ${friendly(e)}`, "error");
   }
@@ -466,7 +488,9 @@ export function friendly(e: unknown): string {
   if (/no space left|os error 28|ENOSPC/i.test(m)) return "the disk is full.";
   if (/read-only file system|os error 30|EROFS/i.test(m)) return "this location is read-only. Use Save as to pick another folder.";
   if (/no such file|os error 2\b|ENOENT/i.test(m)) return "the file or its folder no longer exists.";
-  if (/stream did not contain valid UTF-8|invalid utf-8/i.test(m)) return "the file isn't readable text (wrong format or damaged).";
+  if (/stream did not contain valid UTF-8|invalid utf-8|not valid for encoding utf-8/i.test(m)) {
+    return "the file isn't readable text (wrong format or damaged).";
+  }
   return m;
 }
 
@@ -492,7 +516,13 @@ export const fileHtml = (): string => {
   return core.fileBuild(x, usedAtts(x));
 };
 
-export async function save(as = false): Promise<boolean> {
+let saving: Promise<boolean> | null = null;
+/** Save (as); a second request while one is writing waits for that one instead of racing it. */
+export function save(as = false): Promise<boolean> {
+  return saving ??= saveNow(as).finally(() => (saving = null));
+}
+
+async function saveNow(as: boolean): Promise<boolean> {
   if (!view) return false;
   let path = doc.path.peek();
   if (as || !path) {
@@ -501,13 +531,15 @@ export async function save(as = false): Promise<boolean> {
     path = picked;
   }
   try {
-    const x = currentX();
-    const html = core.fileBuild(x, usedAtts(x));
-    const r = await api.write(path, html);
+    let at = 0;
+    const r = await busy(`Saving ${baseName(path)}…`, () => {
+      const x = currentX();
+      at = rev;
+      return io.write(path!, core.fileBuild(x, usedAtts(x)));
+    });
     doc.path.set(r.path);
     doc.name.set(r.name);
-    doc.dirty.set(false);
-    dropDraft();
+    if (rev === at) (doc.dirty.set(false), dropDraft()); // edits made while writing stay unsaved (and drafted)
     doc.stale.set(false);
     prefs.addRecent(r.path, r.name, Date.now());
     toast(`Saved ${r.name}`);
@@ -543,9 +575,8 @@ export async function exportAs(kind: "dj" | "md" | "docx" | "odt", to?: string):
   const path = to ?? (await chooseTarget(doc.name.peek().replace(/\.[^.]+$/, `.${kind}`), kind === "md" ? ["md", "markdown"] : [kind]));
   if (!path) return;
   if (kind === "docx" || kind === "odt") {
-    toast("Converting with LibreOffice…");
     try {
-      const r = await api.convertTo(core.fileBuild(x, usedAtts(x)), path, kind);
+      const r = await busy("Converting with LibreOffice…", () => io.convertTo(core.fileBuild(x, usedAtts(x)), path, kind));
       toast(`Exported ${r.name}`);
     } catch (e) {
       toast(`Export failed: ${(e as Error).message}`, "error");
@@ -554,7 +585,7 @@ export async function exportAs(kind: "dj" | "md" | "docx" | "odt", to?: string):
   }
   const text = kind === "dj" ? core.djotWrite(x) : core.mdExport(x);
   try {
-    await api.write(path, text);
+    await io.write(path, text);
   } catch (e) {
     return toast(`Export failed: ${friendly(e)}`, "error");
   }
@@ -567,7 +598,7 @@ export async function saveCsv(sheet: string, rows: string[][], to?: string): Pro
   const path = to ?? (await chooseTarget(`${sheet}.csv`, ["csv"]));
   if (!path) return;
   try {
-    await api.write(path, toCsv(rows));
+    await io.write(path, toCsv(rows));
     toast(`Saved ${path.replace(/^.*[\\/]/, "")}`);
   } catch (e) {
     toast(`Could not save: ${friendly(e)}`, "error");
@@ -681,19 +712,10 @@ export const setFileDisplay = (d: "pages" | "web"): void => metaSet({ display: d
 
 export async function insertMediaFromPath(path: string): Promise<void> {
   if (!view) return;
-  const m = await api.readMedia(path);
+  const m = await io.readMedia(path);
   const src = addAtt(m.name, m.mime, m.b64);
   view.dispatch(view.state.tr.replaceSelectionWith(schema.nodes.image.create({ src, alt: m.name.replace(/\.[^.]+$/, "") })).scrollIntoView());
   view.focus();
-}
-
-function fileToB64(f: File): Promise<string> {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result).replace(/^data:[^,]*,/, ""));
-    r.onerror = () => rej(r.error);
-    r.readAsDataURL(f);
-  });
 }
 
 function insertFiles(list: File[], at?: number): boolean {
@@ -701,7 +723,7 @@ function insertFiles(list: File[], at?: number): boolean {
   if (!media.length || !view) return false;
   (async () => {
     for (const f of media) {
-      const src = addAtt(f.name, f.type, await fileToB64(f));
+      const src = addAtt(f.name, f.type, await b64Of(f));
       const node = schema.nodes.image.create({ src, alt: f.name.replace(/\.[^.]+$/, "") });
       const tr = at !== undefined ? view!.state.tr.insert(at, node) : view!.state.tr.replaceSelectionWith(node);
       view!.dispatch(tr);

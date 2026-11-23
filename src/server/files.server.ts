@@ -1,9 +1,6 @@
-// File system edge: dialogs, read/write, legacy-format conversion. Server only.
-import { serverFns } from "aio";
+// File system edge: read/write, drafts, legacy-format conversion. Server only.
+import { type RawRouteHandler, serverFns } from "aio";
 
-export type Loaded = { path: string; name: string; ext: string; text?: string; b64?: string };
-
-const TEXT = new Set(["html", "htm", "dj", "djot", "md", "markdown", "txt", "csv", "tsv"]);
 const LEGACY = new Set(["doc", "rtf", "wps", "wpd", "odt", "docx", "pages", "sxw", "fodt"]);
 export const BOOKS = new Set(["xlsx", "xlsm", "xls", "ods", "fods", "numbers"]);
 export const MIME: Record<string, string> = {
@@ -34,6 +31,19 @@ function b64(u8: Uint8Array): string {
   return btoa(s);
 }
 
+/** Replace `path` atomically: never a half-written document. */
+async function writeAtomic(path: string, body: ReadableStream<Uint8Array> | string): Promise<void> {
+  const tmp = `${path}.${crypto.randomUUID().slice(0, 8)}.jw-tmp`; // own name: two writes never share one
+  try {
+    if (typeof body === "string") await Deno.writeTextFile(tmp, body);
+    else await Deno.writeFile(tmp, body);
+    await Deno.rename(tmp, path);
+  } catch (e) {
+    await Deno.remove(tmp).catch(() => {});
+    throw e;
+  }
+}
+
 const dataDir = () => `${Deno.env.get("XDG_DATA_HOME") ?? `${Deno.env.get("HOME") ?? Deno.env.get("USERPROFILE") ?? "."}/.local/share`}/writy`;
 const draftDir = () => `${dataDir()}/drafts`;
 const safeId = (id: string) => {
@@ -54,26 +64,56 @@ async function soffice(args: string[]): Promise<string> {
   }
 }
 
+/** PDF → pdftohtml XML (text boxes with fonts/positions) + extracted images. */
+async function pdfXml(path: string): Promise<{ xml: string; images: Record<string, string> }> {
+  const tmp = await Deno.makeTempDir({ prefix: "jw-pdf-" });
+  try {
+    const p = await new Deno.Command("pdftohtml", { args: ["-xml", "-nodrm", "-q", "-fmt", "png", path, `${tmp}/d`], stdout: "piped", stderr: "piped" })
+      .output()
+      .catch((e) => {
+        throw e instanceof Deno.errors.NotFound ? new Error("poppler (pdftohtml) is not installed — needed for PDF import") : e;
+      });
+    if (!p.success) throw new Error(new TextDecoder().decode(p.stderr) || "pdftohtml failed");
+    const images: Record<string, string> = {};
+    for await (const e of Deno.readDir(tmp)) if (/\.(png|jpe?g)$/i.test(e.name)) images[e.name] = b64(await Deno.readFile(`${tmp}/${e.name}`));
+    return { xml: await Deno.readTextFile(`${tmp}/d.xml`), images };
+  } finally {
+    await Deno.remove(tmp, { recursive: true }).catch(() => {});
+  }
+}
+
+/** DOC/RTF/WPS/… → DOCX bytes via LibreOffice headless, for the DOCX importer. */
+async function toDocx(path: string): Promise<Uint8Array<ArrayBuffer>> {
+  if (!LEGACY.has(ext(path))) throw new Error(`not a convertible document: ${base(path)}`);
+  const out = await Deno.makeTempDir({ prefix: "jw-conv-" });
+  try {
+    await soffice(["--convert-to", "docx:MS Word 2007 XML", "--outdir", out, path]);
+    return await Deno.readFile(`${out}/${base(path).replace(/\.[^.]+$/, ".docx")}`);
+  } finally {
+    await Deno.remove(out, { recursive: true }).catch(() => {});
+  }
+}
+
+/** Saved-file HTML → .docx / .odt via LibreOffice (written to `path`). */
+async function convertTo(html: string, path: string, fmt: string): Promise<{ path: string; name: string }> {
+  if (fmt !== "docx" && fmt !== "odt") throw new Error(`unknown export format: ${fmt}`);
+  const tmp = await Deno.makeTempDir({ prefix: "jw-exp-" });
+  try {
+    const stem = base(path).replace(/\.[^.]+$/, "");
+    await Deno.writeTextFile(`${tmp}/${stem}.html`, html);
+    const filter = fmt === "docx" ? "docx:MS Word 2007 XML" : "odt:writer8";
+    await soffice(["--infilter=HTML (StarWriter)", "--convert-to", filter, "--outdir", tmp, `${tmp}/${stem}.html`]);
+    await Deno.copyFile(`${tmp}/${stem}.${fmt}`, path);
+    return { path, name: base(path) };
+  } finally {
+    await Deno.remove(tmp, { recursive: true }).catch(() => {});
+  }
+}
+
+const draftMeta = (d: Draft) => Deno.writeTextFile(`${draftDir()}/${safeId(d.id)}.json`, JSON.stringify(d));
+
+/** Small calls over the WebSocket. Document bytes go through `routes` below. */
 export const files = serverFns("files", {
-  /** Read a document. Text formats come back as text, others as base64. */
-  read: async (path: string): Promise<Loaded> => {
-    const e = ext(path);
-    const out: Loaded = { path, name: base(path), ext: e };
-    if (TEXT.has(e)) out.text = await Deno.readTextFile(path);
-    else if (e !== "pdf") out.b64 = b64(await Deno.readFile(path)); // PDFs go through pdfXml
-    return out;
-  },
-  /** Read a media file to embed. Relative paths resolve against `dir`. */
-  readMedia: async (path: string, dir?: string) => {
-    const p = /^([a-zA-Z]:)?[\\/]/.test(path) || !dir ? path : `${dir}/${path}`;
-    return { name: base(p), mime: MIME[ext(p)] ?? "application/octet-stream", b64: b64(await Deno.readFile(p)) };
-  },
-  write: async (path: string, text: string) => {
-    const tmp = `${path}.jw-tmp`;
-    await Deno.writeTextFile(tmp, text);
-    await Deno.rename(tmp, path); // atomic replace: never a half-written document
-    return { path, name: base(path), bytes: text.length };
-  },
   exists: async (path: string) => {
     try {
       await Deno.stat(path);
@@ -83,13 +123,6 @@ export const files = serverFns("files", {
     }
   },
   // ── crash recovery: one draft per editing session ──
-  draftSave: async (id: string, path: string, name: string, html: string) => {
-    await Deno.mkdir(draftDir(), { recursive: true });
-    const f = `${draftDir()}/${safeId(id)}`;
-    await Deno.writeTextFile(`${f}.html.tmp`, html);
-    await Deno.rename(`${f}.html.tmp`, `${f}.html`);
-    await Deno.writeTextFile(`${f}.json`, JSON.stringify({ id, path, name, time: Date.now() } satisfies Draft));
-  },
   draftList: async (): Promise<Draft[]> => {
     const out: Draft[] = [];
     try {
@@ -101,42 +134,10 @@ export const files = serverFns("files", {
     }
     return out.sort((a, b) => b.time - a.time);
   },
-  draftRead: (id: string) => Deno.readTextFile(`${draftDir()}/${safeId(id)}.html`),
+  /** Heartbeat for an unchanged draft: refresh its time without resending the document. */
+  draftTouch: (id: string, path: string, name: string) => draftMeta({ id, path, name, time: Date.now() }),
   draftDrop: async (id: string) => {
     for (const x of [".html", ".json"]) await Deno.remove(`${draftDir()}/${safeId(id)}${x}`).catch(() => {});
-  },
-
-  /** Saved-file HTML → .docx / .odt via LibreOffice (written next to `path`). */
-  convertTo: async (html: string, path: string, fmt: "docx" | "odt") => {
-    const tmp = await Deno.makeTempDir({ prefix: "jw-exp-" });
-    try {
-      const stem = base(path).replace(/\.[^.]+$/, "");
-      await Deno.writeTextFile(`${tmp}/${stem}.html`, html);
-      const filter = fmt === "docx" ? "docx:MS Word 2007 XML" : "odt:writer8";
-      await soffice(["--infilter=HTML (StarWriter)", "--convert-to", filter, "--outdir", tmp, `${tmp}/${stem}.html`]);
-      await Deno.copyFile(`${tmp}/${stem}.${fmt}`, path);
-      return { path, name: base(path) };
-    } finally {
-      await Deno.remove(tmp, { recursive: true }).catch(() => {});
-    }
-  },
-
-  /** PDF → pdftohtml XML (text boxes with fonts/positions) + extracted images. */
-  pdfXml: async (path: string) => {
-    const tmp = await Deno.makeTempDir({ prefix: "jw-pdf-" });
-    try {
-      const p = await new Deno.Command("pdftohtml", { args: ["-xml", "-nodrm", "-q", "-fmt", "png", path, `${tmp}/d`], stdout: "piped", stderr: "piped" })
-        .output()
-        .catch((e) => {
-          throw e instanceof Deno.errors.NotFound ? new Error("poppler (pdftohtml) is not installed — needed for PDF import") : e;
-        });
-      if (!p.success) throw new Error(new TextDecoder().decode(p.stderr) || "pdftohtml failed");
-      const images: Record<string, string> = {};
-      for await (const e of Deno.readDir(tmp)) if (/\.(png|jpe?g)$/i.test(e.name)) images[e.name] = b64(await Deno.readFile(`${tmp}/${e.name}`));
-      return { xml: await Deno.readTextFile(`${tmp}/d.xml`), images };
-    } finally {
-      await Deno.remove(tmp, { recursive: true }).catch(() => {});
-    }
   },
 
   /** A workbook (.xlsx / .ods / …) → each sheet as CSV with its formulas, in workbook order, via LibreOffice. */
@@ -155,16 +156,65 @@ export const files = serverFns("files", {
       await Deno.remove(out, { recursive: true }).catch(() => {});
     }
   },
-
-  /** DOC/RTF/WPS/… → DOCX via LibreOffice headless (base64), for the DOCX importer. */
-  toDocx: async (path: string) => {
-    if (!LEGACY.has(ext(path))) throw new Error(`not a convertible document: ${base(path)}`);
-    const out = await Deno.makeTempDir({ prefix: "jw-conv-" });
-    try {
-      await soffice(["--convert-to", "docx:MS Word 2007 XML", "--outdir", out, path]);
-      return b64(await Deno.readFile(`${out}/${base(path).replace(/\.[^.]+$/, ".docx")}`));
-    } finally {
-      await Deno.remove(out, { recursive: true }).catch(() => {});
-    }
-  },
 });
+
+// ── HTTP: documents, pictures and drafts can be 100+ MB — far over aio's 1 MB WebSocket frame limit,
+// and an HTTP body streams (the client shows a progress bar). Same trust as `files`: the app's own window. ──
+
+type Handler = (q: URLSearchParams, req: Request) => Promise<Response>;
+
+/** A custom header makes every cross-origin call a preflight, which fails (no CORS headers): only Writy's page gets in. */
+const io = (methods: Record<string, Handler>): RawRouteHandler => async (req) => {
+  if (req.headers.get("x-writy") !== "1") return new Response("forbidden", { status: 403 });
+  const h = methods[req.method];
+  if (!h) return new Response("method not allowed", { status: 405, headers: { allow: Object.keys(methods).join(", ") } });
+  try {
+    return await h(new URL(req.url).searchParams, req);
+  } catch (e) {
+    return new Response(e instanceof Error ? e.message : String(e), { status: e instanceof Deno.errors.NotFound ? 404 : 500 });
+  }
+};
+
+const need = (q: URLSearchParams, k: string): string => {
+  const v = q.get(k);
+  if (!v) throw new Error(`missing "${k}"`);
+  return v;
+};
+
+/** Stream a file with its size, so the client can show progress. */
+async function sendFile(path: string): Promise<Response> {
+  const f = await Deno.open(path);
+  const { size } = await f.stat();
+  return new Response(f.readable, { headers: { "content-type": MIME[ext(path)] ?? "application/octet-stream", "content-length": String(size) } });
+}
+
+const json = (v: unknown) => Response.json(v);
+
+export const routes: Record<string, RawRouteHandler> = {
+  /** GET: a file's bytes (`dir` resolves a relative `path`). PUT: replace it with the body. */
+  "/io/file": io({
+    GET: (q) => {
+      const path = need(q, "path"), dir = q.get("dir");
+      return sendFile(/^([a-zA-Z]:)?[\\/]/.test(path) || !dir ? path : `${dir}/${path}`);
+    },
+    PUT: async (q, req) => {
+      const path = need(q, "path");
+      await writeAtomic(path, req.body ?? "");
+      return json({ path, name: base(path) });
+    },
+  }),
+  "/io/docx": io({ GET: async (q) => new Response(await toDocx(need(q, "path"))) }),
+  "/io/pdf": io({ GET: async (q) => json(await pdfXml(need(q, "path"))) }),
+  "/io/convert": io({ PUT: async (q, req) => json(await convertTo(await req.text(), need(q, "path"), need(q, "fmt"))) }),
+  /** Crash-recovery draft of one editing session. */
+  "/io/draft": io({
+    GET: (q) => sendFile(`${draftDir()}/${safeId(need(q, "id"))}.html`),
+    PUT: async (q, req) => {
+      const id = safeId(need(q, "id"));
+      await Deno.mkdir(draftDir(), { recursive: true });
+      await writeAtomic(`${draftDir()}/${id}.html`, req.body ?? "");
+      await draftMeta({ id, path: q.get("path") ?? "", name: q.get("name") ?? "", time: Date.now() });
+      return json({ ok: true });
+    },
+  }),
+};

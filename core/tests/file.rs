@@ -189,7 +189,20 @@ fn timezone_falls_back_to_utc() {
 fn table_styles_and_vertical_alignment() {
     let html = file::build(parse("{.banded}\n| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n"), &[]);
     assert!(html.contains("<table class=\"banded") || html.contains("class=\"jw-table banded"), "the style class reaches the table: {html}");
-    assert!(html.contains("table.banded tr:nth-child(even) td"), "and its CSS");
+    assert!(html.contains("table.banded tr:nth-child(even of :has(>td):not(.jw-pg)) td"), "and its CSS (body rows only)");
+}
+
+#[test]
+fn table_header_rows_repeat_on_printed_pages() {
+    let html = file::build(parse("| a | b |\n|---|---|\n| 1 | 2 |\n"), &[]);
+    assert!(html.contains("<table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>"), "{html}");
+    let rich = file::build(parse("^ Cap\n\n{head=1 widths=\"40px,60px\"}\n::: table\n- - H\n  - I\n- - x\n  - y\n:::\n"), &[]);
+    let t = &rich[rich.find("<table class=\"jw-table\"").expect("rich table")..];
+    assert!(t.starts_with("<table class=\"jw-table\" style=\"width:100px\">"), "columns all resized in px → that exact width: {t}");
+    assert!(t.contains("<thead><tr><th>H</th><th>I</th></tr></thead><tbody><tr><td>x</td><td>y</td></tr></tbody>"), "{t}");
+    let pct = file::build(parse("{head=1 widths=\"30%,70%\"}\n::: table\n- - H\n  - I\n:::\n"), &[]);
+    assert!(pct.contains("<table class=\"jw-table\"><colgroup>"), "percent widths: no fixed width: {pct}");
+    assert!(!pct.contains("<tbody>"), "no empty body");
 }
 
 #[test]

@@ -413,9 +413,27 @@ class RawView extends Atom {
   }
   draw() {
     this.dom.textContent = "";
-    this.dom.append(h("span", "jw-raw-label", this.node.attrs.format), h("pre", "", this.node.attrs.text));
+    const pic = this.node.attrs.format === "html" ? svgPicture(this.node.attrs.text) : null;
+    this.dom.classList.toggle("jw-raw-pic", !!pic);
+    this.dom.append(...(pic ? [pic] : [h("span", "jw-raw-label", this.node.attrs.format), h("pre", "", this.node.attrs.text)]));
     this.dom.title = "Double-click to edit";
   }
+}
+
+/**
+ * A raw HTML block that is one `<svg>` drawn as a picture. Through `<img>` the SVG cannot run scripts or load
+ * anything, so the editor never executes file content. Anything else stays shown as source.
+ */
+function svgPicture(src: string): HTMLImageElement | null {
+  const body = new DOMParser().parseFromString(src, "text/html").body;
+  const svg = body.firstElementChild;
+  if (body.childElementCount !== 1 || svg?.localName !== "svg" || body.textContent!.trim() !== svg.textContent!.trim()) return null;
+  const img = h("img", "jw-raw-svg") as HTMLImageElement;
+  img.alt = svg.getAttribute("aria-label") ?? "";
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
+  const w = (svg as SVGElement).style.width || svg.getAttribute("width") || "100%";
+  img.style.width = /^[\d.]+$/.test(w) ? `${w}px` : w; // SVG width="680" = user units = px
+  return img;
 }
 
 class TocView extends Atom {

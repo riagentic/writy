@@ -1786,6 +1786,27 @@ Deno.test({ name: "audit 6: files", ignore: !URL_, sanitizeResources: false, san
       await p.key("Escape");
     });
 
+    await t.step("6.6 big file (over the 1 MB WebSocket frame): opens, saves and reopens; the status bar shows progress", async () => {
+      const big = crypto.getRandomValues(new Uint8Array(65536));
+      const png = new Uint8Array(4 << 20).map((_, i) => big[i & 65535]);
+      await Deno.writeFile(`${tmp}/big.png`, png);
+      await Deno.writeTextFile(`${tmp}/big.md`, "# Big\n\n![pic](big.png)\n");
+      await p.eval(`(window.__tasks = [], new MutationObserver(() => {
+        const t = document.querySelector(".jw-task"); t && window.__tasks.push(t.textContent);
+      }).observe(document.body, { subtree: true, childList: true, characterData: true }), 1)`);
+      await p.eval(`jw.open(${q(`${tmp}/big.md`)})`);
+      await p.eval(`jw.saveTo(${q(`${tmp}/big.html`)})`);
+      assert((await Deno.stat(`${tmp}/big.html`)).size > png.length, "the picture is in the saved file");
+      await p.eval(`jw.open(${q(`${tmp}/big.html`)})`);
+      assertEquals(
+        await p.eval<number>(`(() => { let n = 0; jw.view().state.doc.descendants((x) => void (x.type.name === "image" && n++)); return n; })()`),
+        1,
+      );
+      const tasks = await p.eval<string[]>(`window.__tasks`);
+      for (const s of ["Opening big.md", "Saving big.html", "Reading big.html"]) assert(tasks.some((x) => x.includes(s)), `status shows "${s}"`);
+      assertEquals(await p.eval<number>(`document.querySelectorAll(".jw-task").length`), 0, "the bar goes away when done");
+    });
+
     await t.step("6.7 desktop close button with unsaved work: asks, Cancel keeps, Don't Save closes", async () => {
       // the desktop window shows no "Leave site?" box: the app must ask itself, then close for real
       await p.eval(`window.__aioWindow = {}; window.__closed = 0; window.close = () => window.__closed++`);

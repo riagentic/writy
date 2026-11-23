@@ -1,7 +1,8 @@
 // Plugins, keymaps and Word-style autoformat (smart quotes, "1. " lists, "# " headings …).
 import { commands, dropcursor, gapcursor, history, inputrules, keymap, schemaList, state, tables } from "../vendor/pm.js";
-import type { model as M, state as S } from "../vendor/pm.js";
+import type { model as M, state as S, view as V } from "../vendor/pm.js";
 import { domAttrs, schema } from "./schema.ts";
+import { ask } from "../ui/dialog.ts";
 
 const { wrappingInputRule, textblockTypeInputRule, InputRule, smartQuotes, ellipsis, emDash } = inputrules;
 const N = schema.nodes;
@@ -261,11 +262,26 @@ export function keys(extra: Record<string, Cmd> = {}) {
   return [keymap.keymap(k), keymap.keymap(baseKeymap)];
 }
 
-/** The resizable table view, plus the table's style class (Table ▸ Style: banded rows, no borders …). */
+/** The resizable table view, plus the table's style class (Table ▸ Style: banded rows, no borders …) and caption. */
 class StyledTable extends tables.TableView {
-  constructor(node: M.Node, cellMinWidth: number) {
+  private cap = document.createElement("caption");
+  constructor(node: M.Node, cellMinWidth: number, private view?: V.EditorView) {
     super(node, cellMinWidth);
+    this.cap.contentEditable = "false";
+    this.cap.title = "Double-click to edit the caption";
+    this.cap.ondblclick = () => void this.editCaption();
     this.look(node);
+  }
+  override ignoreMutation(r: V.ViewMutationRecord): boolean {
+    return super.ignoreMutation(r) || this.cap.contains(r.target) || (r.type === "childList" && r.target === this.table); // the caption is ours
+  }
+  private async editCaption() {
+    const v = this.view;
+    const t = await ask("Table caption", String(this.node.attrs.caption ?? ""));
+    if (t === null || !v) return;
+    let at = -1;
+    v.state.doc.descendants((n, pos) => (at < 0 && n === this.node && v.nodeDOM(pos) === this.dom && (at = pos), at < 0));
+    if (at >= 0) v.dispatch(v.state.tr.setNodeAttribute(at, "caption", t.trim()));
   }
   override update(node: M.Node): boolean {
     if (!super.update(node)) return false;
@@ -274,6 +290,16 @@ class StyledTable extends tables.TableView {
   }
   private look(node: M.Node) {
     this.table.className = domAttrs(node.attrs.a).class ?? ""; // the class only: the view owns the table's inline width
+    this.cap.textContent = String(node.attrs.caption ?? "");
+    if (!this.cap.textContent) this.cap.remove();
+    else if (this.cap.parentNode !== this.table) this.table.prepend(this.cap);
+    // `{width=60%}` and `widths="30%,70%"`: what the file asks for (as in the saved file); columns resized here (px) win
+    if (!this.table.style.width && node.attrs.a?.width) this.table.style.width = String(node.attrs.a.width);
+    const ws = String(node.attrs.a?.widths ?? "").split(",").map((w) => w.trim());
+    [...this.colgroup.children].forEach((c, i) => {
+      const col = c as HTMLElement;
+      if (!col.style.width && /%$/.test(ws[i] ?? "")) col.style.width = ws[i];
+    });
   }
 }
 
@@ -285,7 +311,7 @@ export function plugins(extra: S.Plugin[] = [], extraKeys: Record<string, Cmd> =
     history.history(),
     dropcursor.dropCursor({ color: "#1a5fb4", width: 2 }),
     gapcursor.gapCursor(),
-    tables.columnResizing({ View: StyledTable }),
+    tables.columnResizing({ View: StyledTable, defaultCellMinWidth: 0 }), // unsized columns: no 100px floor that pushes wide tables off the page
     tables.tableEditing(),
   ];
 }

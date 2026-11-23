@@ -13,6 +13,17 @@
   const BLK = ":scope>:is(p,ul,ol,div,blockquote,pre,table,figure,dl,h1,h2,h3,h4,h5,h6,section,nav,hr)";
   const open = (e) =>
     (/^(UL|OL|LI|BLOCKQUOTE|DL|DD)$/.test(e.tagName) || e.matches("div:not(.jw-chart,.jw-anchor,.page-break),section.footnotes")) && !!e.querySelector(BLK);
+  // a long table breaks between body rows: never before the first one or across a rowspan; the header rows repeat
+  const live = (s) => s ? [...s.rows].filter((r) => !r.matches(".jw-pg,.jw-pg-head")) : [];
+  const rows = (t, o) => {
+    const tu = o[o.length - 1], hd = live(t.tHead), bd = live(t.tBodies[0]), n = Math.max(1, ...[...hd, ...bd].map((r) => [...r.cells].reduce((s, c) => s + c.colSpan, 0)));
+    let cv = 0;
+    bd.forEach((e, i) => {
+      if (i > 0 && i > cv) o.push({ e, f: false, r: { n, hd } });
+      for (const c of e.cells) cv = Math.max(cv, i + c.rowSpan - 1);
+    });
+    tu.ld = bd[0] || hd[hd.length - 1];
+  };
   const units = () => {
     const o = [];
     let f = false;
@@ -25,6 +36,7 @@
         }
         o.push({ e, f });
         f = e.matches(".page-break,.jw-slide");
+        if (e.tagName == "TABLE") rows(e, o);
       }
     };
     w(M);
@@ -52,6 +64,9 @@
     for (let pass = 0; pass < 4; pass++) {
       const r0 = M.getBoundingClientRect(), z = r0.height / (M.offsetHeight || 1) || 1;
       const L = units(), rs = L.map((u) => u.e.getBoundingClientRect()), tp = rs.map((r) => (r.top - r0.top) / z), hs = rs.map((r) => r.height / z);
+      // what must fit: a table taller than a sheet only its start; a moved row brings copies of the header rows
+      const ft = hs.map((h, i) => L[i].ld && h > R ? (L[i].ld.getBoundingClientRect().bottom - rs[i].top) / z : h);
+      const hh = L.map((u) => u.r ? u.r.hd.reduce((s, r) => s + r.getBoundingClientRect().height / z, 0) : 0);
       let mv = 0, sf = 0, ch = false;
       const pu = [];
       end = 0;
@@ -59,23 +74,35 @@
         const was = spec.get(u.e), nat = tp[i] - mv - (was ? was.d : 0);
         mv += was ? was.d : 0;
         const y = nat + sf;
-        const keep = /^H[1-6]$/.test(u.e.tagName) && i + 1 < L.length ? hs[i + 1] + 12 : 0;
-        const t = place(y, hs[i] + keep <= R ? hs[i] + keep : hs[i], u.f), D = t - y;
+        const keep = /^H[1-6]$/.test(u.e.tagName) && i + 1 < L.length ? ft[i + 1] + 12 : 0;
+        const t = place(y, ft[i] + keep <= R ? ft[i] + keep : ft[i], u.f), D = t > y + .5 ? t - y + hh[i] : 0;
         sf += D;
-        end = Math.max(end, t + hs[i]);
+        end = Math.max(end, y + D + hs[i]);
         if (D <= .5) {
           if (was) {
             spec.delete(u.e);
             u.e.style.removeProperty("--jw-mt");
+            was.g && was.g.forEach((x) => x.remove());
             ch = true;
           }
           return;
         }
-        const cm = was ? was.m - was.d : Math.max(parseFloat(getComputedStyle(u.e).marginTop) || 0, gap(u.e)),
-          s = { m: Math.round((cm + D) * 10) / 10, d: was ? was.d : D };
+        const cm = was ? was.m - was.d : u.r ? 0 : Math.max(parseFloat(getComputedStyle(u.e).marginTop) || 0, gap(u.e)),
+          s = { m: Math.round((cm + D) * 10) / 10, d: was ? was.d : D, g: was && was.g };
         if (!was || Math.abs(s.m - was.m) > .5) ch = true;
         spec.set(u.e, s);
-        u.e.style.setProperty("--jw-mt", s.m + "px");
+        if (u.r) {
+          // a row takes no margin: a gap row, then the header copies, before it
+          if (!s.g) {
+            const tr = document.createElement("tr"), td = document.createElement("td");
+            tr.className = "jw-pg";
+            td.colSpan = u.r.n;
+            tr.append(td);
+            s.g = [tr, ...u.r.hd.map((r) => Object.assign(r.cloneNode(true), { className: "jw-pg-head" }))];
+            u.e.before(...s.g);
+          }
+          s.g[0].firstChild.style.height = Math.max(0, s.m - hh[i]) + "px";
+        } else u.e.style.setProperty("--jw-mt", s.m + "px");
         pu.push({ e: u.e, nat, s });
       });
       if (!ch) break;

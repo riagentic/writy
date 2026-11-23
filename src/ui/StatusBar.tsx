@@ -1,4 +1,4 @@
-// Status bar: pages, words, tracking, layout, zoom.
+// Status bar: pages, words, tracking, long-job progress, layout, zoom.
 import type { JSX } from "aio";
 import { prefs } from "../cell/prefs.ts";
 import { doc } from "../editor/session.ts";
@@ -10,6 +10,7 @@ import { onCleanup, onMount, useLocal, useRef } from "aio/air";
 import { MAX, MIN, setZoom, zoomBy, zoomFit } from "./zoom.ts";
 import { settingsOpen } from "./state.ts";
 import { count } from "./text.ts";
+import { task } from "../editor/io.ts";
 
 const THEME = { auto: ["monitor", "System"], light: ["sun", "Light"], dark: ["moon", "Dark"] } as const;
 const NEXT = { auto: "Light", light: "Dark", dark: "System" } as const;
@@ -63,6 +64,17 @@ function ZoomMenu(): JSX.Element {
   );
 }
 
+/** A long job (opening, saving, converting): its label, percent and a bar (no value = still working, size unknown). */
+function Task({ label, done }: { label: string; done: number | null }): JSX.Element {
+  const pct = done === null ? "" : `${Math.round(done * 100)}%`;
+  return (
+    <span class="jw-task" role="status" aria-live="polite">
+      {label} {pct}
+      {done === null ? <progress aria-label={label} /> : <progress aria-label={label} max="1" value={String(done)} />}
+    </span>
+  );
+}
+
 export default function StatusBar(): JSX.Element {
   const p = pages.value;
   return (
@@ -74,6 +86,7 @@ export default function StatusBar(): JSX.Element {
       {tracking() ? <span class="jw-badge">Track changes on</span> : null}
       {doc.stale.value ? <span class="jw-badge warn" title="The Djot source was edited outside Writy">Source edited externally</span> : null}
       <span class="jw-spacer" />
+      {task.value ? <Task label={task.value.label} done={task.value.done} /> : null}
       <span class="muted">{doc.dirty.value ? "Unsaved changes" : doc.path.value ? "Saved" : ""}</span>
       <button
         type="button"
